@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 
 function App() {
@@ -6,9 +6,33 @@ function App() {
   const [taskInput, setTaskInput] = useState("");
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [newSubtaskInput, setNewSubtaskInput] = useState("");
-  const [newSubtaskVisible, setNewSubtaskVisible] = useState(false);
+  const [addingSubtaskForTask, setAddingSubtaskForTask] = useState(null);
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [editingSubtask, setEditingSubtask] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [zoomInput, setZoomInput] = useState("100");
+
+  const zoomOptions = [
+    150, 140, 130, 120, 110, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10,
+  ];
+
+  const setZoomValue = (value) => {
+    const newZoom = parseFloat(value);
+    if (!isNaN(newZoom)) {
+      setZoom(newZoom / 100);
+      setZoomInput(value);
+    }
+  };
+
+  const zoomIn = () => {
+    setZoom(zoom + 0.1);
+    setZoomInput(((zoom + 0.1) * 100).toString());
+  };
+
+  const zoomOut = () => {
+    setZoom(Math.max(0.2, zoom - 0.1));
+    setZoomInput((Math.max(0.2, zoom - 0.1) * 100).toString());
+  };
 
   const addTask = () => {
     if (taskInput.trim() === "") return;
@@ -16,6 +40,10 @@ function App() {
     setTasks([...tasks, newTask]);
     setTaskInput("");
     setEditingTaskId(null);
+  };
+
+  const appStyles = {
+    transform: `scale(${zoom})`,
   };
 
   const toggleInput = (taskId) => {
@@ -34,22 +62,24 @@ function App() {
   };
 
   const addSubtask = (parentId) => {
-    setNewSubtaskVisible(true);
-    setActiveTaskId(parentId); // Задаємо активне завдання для додавання підзавдань
+    setAddingSubtaskForTask(parentId);
   };
 
   const saveSubtask = (parentId) => {
     const updatedTasks = tasks.map((task) => {
       if (task.id === parentId) {
-        const newSubtask = { id: Date.now(), text: newSubtaskInput };
+        const newSubtask = {
+          id: Date.now(),
+          text: newSubtaskInput,
+          subsubtasks: [],
+        };
         task.subtasks.push(newSubtask);
       }
       return task;
     });
     setTasks(updatedTasks);
     setNewSubtaskInput("");
-    setNewSubtaskVisible(false);
-    setActiveTaskId(null); // Закінчуємо додавання підзавдань для активного завдання
+    setAddingSubtaskForTask(null);
   };
 
   const editSubtask = (taskId, subtaskId, newText) => {
@@ -79,13 +109,48 @@ function App() {
     setTasks(updatedTasks);
   };
 
+  // Функція для обробки натискання клавіш
+  const handleKeyPress = (event) => {
+    if (event.key === "+") {
+      zoomIn();
+    } else if (event.key === "-") {
+      zoomOut();
+    }
+  };
+
+  // Встановлення обробки подій при завантаженні компоненту
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyPress);
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, []); // Порожній масив забезпечує одноразову реєстрацію обробників подій
+
   return (
-    <div className="App">
+    <div className="App" style={appStyles}>
       <h1>Todo List</h1>
+      <div className="zoom-buttons">
+        <button onClick={zoomOut}>-</button>
+        <select
+          value={zoomInput}
+          onChange={(e) => setZoomValue(e.target.value)}
+        >
+          {zoomOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}%
+            </option>
+          ))}
+        </select>
+        <button onClick={zoomIn}>+</button>
+      </div>
       <div>
-        <button onClick={() => toggleInput("new")}>
-          {editingTaskId === "new" ? "Скасувати" : "Plus"}
-        </button>
+        <div className="categories">
+          <p>Categories</p>
+          <button onClick={() => toggleInput("new")}>
+            {editingTaskId === "new" ? "❌" : "✔️"}
+          </button>
+        </div>
+
         {editingTaskId === "new" && (
           <div className="input-container">
             <input
@@ -116,24 +181,21 @@ function App() {
                     setTasks(updatedTasks);
                   }}
                 />
-                <button onClick={() => setEditingTaskId(null)}>Зберегти</button>
+                <button onClick={() => setEditingTaskId(null)}>✔️</button>
               </div>
             ) : (
               <>
                 <div className="task-content">
                   <span>{task.text}</span>
-                  <button onClick={() => deleteTask(task.id)}>Видалити</button>
-                  <button onClick={() => toggleInput(task.id)}>
-                    Редагувати
-                  </button>
-                  <button onClick={() => addSubtask(task.id)}>Plus2</button>
+                  <button onClick={() => deleteTask(task.id)}>❌</button>
+                  <button onClick={() => toggleInput(task.id)}>⭕</button>
+                  <button onClick={() => addSubtask(task.id)}>✔️</button>
                 </div>
                 {task.subtasks.length > 0 && (
                   <ul className="subtask-list">
                     {task.subtasks.map((subtask) => (
                       <li key={subtask.id} className="subtask-item">
-                        {editingTaskId === task.id &&
-                        editingSubtask === subtask.id ? (
+                        {editingSubtask === subtask.id ? (
                           <div className="input-container">
                             <input
                               type="text"
@@ -147,7 +209,12 @@ function App() {
                               }}
                             />
                             <button onClick={() => setEditingSubtask(null)}>
-                              Зберегти
+                              ✔️
+                            </button>
+                            <button
+                              onClick={() => deleteSubtask(task.id, subtask.id)}
+                            >
+                              ❌
                             </button>
                           </div>
                         ) : (
@@ -156,21 +223,23 @@ function App() {
                             <button
                               onClick={() => deleteSubtask(task.id, subtask.id)}
                             >
-                              Видалити
+                              ❌
                             </button>
                             <button
                               onClick={() => setEditingSubtask(subtask.id)}
                             >
-                              Редагувати
+                              ⭕
                             </button>
-                            <button>Plus3</button>
+                            <button onClick={() => addSubtask(subtask.id)}>
+                              ✔️
+                            </button>
                           </>
                         )}
                       </li>
                     ))}
                   </ul>
                 )}
-                {activeTaskId === task.id && (
+                {addingSubtaskForTask === task.id && (
                   <div className="input-container">
                     <input
                       type="text"
@@ -178,10 +247,23 @@ function App() {
                       value={newSubtaskInput}
                       onChange={(e) => setNewSubtaskInput(e.target.value)}
                     />
-                    <button onClick={() => saveSubtask(task.id)}>Додати</button>
+                    <button
+                      onClick={() => {
+                        saveSubtask(task.id);
+                        setAddingSubtaskForTask(null);
+                      }}
+                    >
+                      ✔️
+                    </button>
                   </div>
                 )}
               </>
+            )}
+            {addingSubtaskForTask && task.subtasks.length > 0 && (
+              <div
+                className="arrow-line"
+                style={{ height: `${task.subtasks.length * 42}px` }}
+              ></div>
             )}
           </li>
         ))}
