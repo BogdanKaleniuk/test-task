@@ -41,7 +41,7 @@ button {
   margin-right: 10px;
 }
 
-input[type="text"] {
+input[type='text'] {
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -120,7 +120,7 @@ input[type="text"] {
 }
 
 .task-list .task-item::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
@@ -130,7 +130,7 @@ input[type="text"] {
 }
 
 .subtask-list .subtask-item::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
@@ -172,4 +172,12 @@ input[type="text"] {
 
 .completed-subtask {
   text-decoration: line-through;
+}
+
+.categories button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
 }

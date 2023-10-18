@@ -1,22 +1,25 @@
-import React, { useState, useEffect } from "react";
-import "./App.css";
+import React, { useState, useEffect } from 'react';
+import './App.css';
 
 function App() {
   const [tasks, setTasks] = useState([]);
-  const [taskInput, setTaskInput] = useState("");
+  const [taskInput, setTaskInput] = useState('');
   const [editingTaskId, setEditingTaskId] = useState(null);
-  const [newSubtaskInput, setNewSubtaskInput] = useState("");
+  const [newSubtaskInput, setNewSubtaskInput] = useState('');
   const [addingSubtaskForTask, setAddingSubtaskForTask] = useState(null);
   const [activeTaskId, setActiveTaskId] = useState(null);
   const [editingSubtask, setEditingSubtask] = useState(null);
   const [zoom, setZoom] = useState(1);
-  const [zoomInput, setZoomInput] = useState("100");
+  const [zoomInput, setZoomInput] = useState('100');
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartY, setDragStartY] = useState(0);
 
   const zoomOptions = [
     150, 140, 130, 120, 110, 100, 90, 80, 70, 60, 50, 40, 30, 20, 10,
   ];
 
-  const setZoomValue = (value) => {
+  const setZoomValue = value => {
     const newZoom = parseFloat(value);
     if (!isNaN(newZoom)) {
       setZoom(newZoom / 100);
@@ -35,38 +38,39 @@ function App() {
   };
 
   const addTask = () => {
-    if (taskInput.trim() === "") return;
+    if (taskInput.trim() === '') return;
     const newTask = { id: Date.now(), text: taskInput, subtasks: [] };
     setTasks([...tasks, newTask]);
-    setTaskInput("");
+    setTaskInput('');
     setEditingTaskId(null);
   };
 
   const appStyles = {
     transform: `scale(${zoom})`,
+    cursor: isDragging ? 'grabbing' : 'auto',
   };
 
-  const toggleInput = (taskId) => {
+  const toggleInput = taskId => {
     setEditingTaskId(taskId);
     if (editingTaskId === taskId) {
       setEditingTaskId(null);
     }
   };
 
-  const deleteTask = (taskId) => {
-    const shouldDelete = window.confirm("Дійсно видалити цю задачу?");
+  const deleteTask = taskId => {
+    const shouldDelete = window.confirm('Дійсно видалити цю задачу?');
     if (shouldDelete) {
-      const updatedTasks = tasks.filter((task) => task.id !== taskId);
+      const updatedTasks = tasks.filter(task => task.id !== taskId);
       setTasks(updatedTasks);
     }
   };
 
-  const addSubtask = (parentId) => {
+  const addSubtask = parentId => {
     setAddingSubtaskForTask(parentId);
   };
 
-  const saveSubtask = (parentId) => {
-    const updatedTasks = tasks.map((task) => {
+  const saveSubtask = parentId => {
+    const updatedTasks = tasks.map(task => {
       if (task.id === parentId) {
         const newSubtask = {
           id: Date.now(),
@@ -78,14 +82,14 @@ function App() {
       return task;
     });
     setTasks(updatedTasks);
-    setNewSubtaskInput("");
+    setNewSubtaskInput('');
     setAddingSubtaskForTask(null);
   };
 
   const editSubtask = (taskId, subtaskId, newText) => {
-    const updatedTasks = tasks.map((task) => {
+    const updatedTasks = tasks.map(task => {
       if (task.id === taskId) {
-        task.subtasks = task.subtasks.map((subtask) => {
+        task.subtasks = task.subtasks.map(subtask => {
           if (subtask.id === subtaskId) {
             subtask.text = newText;
           }
@@ -98,10 +102,10 @@ function App() {
   };
 
   const deleteSubtask = (taskId, subtaskId) => {
-    const updatedTasks = tasks.map((task) => {
+    const updatedTasks = tasks.map(task => {
       if (task.id === taskId) {
         task.subtasks = task.subtasks.filter(
-          (subtask) => subtask.id !== subtaskId
+          subtask => subtask.id !== subtaskId
         );
       }
       return task;
@@ -109,33 +113,56 @@ function App() {
     setTasks(updatedTasks);
   };
 
-  // Функція для обробки натискання клавіш
-  const handleKeyPress = (event) => {
-    if (event.key === "+") {
+  const handleKeyPress = event => {
+    if (event.key === '+') {
       zoomIn();
-    } else if (event.key === "-") {
+    } else if (event.key === '-') {
       zoomOut();
     }
   };
 
-  // Встановлення обробки подій при завантаженні компоненту
+  const handleMouseDown = event => {
+    if (event.button === 0) {
+      setIsDragging(true);
+      setDragStartX(event.clientX);
+      setDragStartY(event.clientY);
+    }
+  };
+
+  const handleMouseMove = event => {
+    if (isDragging) {
+      const deltaX = event.clientX - dragStartX;
+      const deltaY = event.clientY - dragStartY;
+      window.scrollBy(-deltaX, -deltaY);
+      setDragStartX(event.clientX);
+      setDragStartY(event.clientY);
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) {
+      setIsDragging(false);
+    }
+  };
+
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyPress);
+    window.addEventListener('keydown', handleKeyPress);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
     return () => {
-      window.removeEventListener("keydown", handleKeyPress);
+      window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []); // Порожній масив забезпечує одноразову реєстрацію обробників подій
+  }, []);
 
   return (
     <div className="App" style={appStyles}>
       <h1>Todo List</h1>
       <div className="zoom-buttons">
         <button onClick={zoomOut}>-</button>
-        <select
-          value={zoomInput}
-          onChange={(e) => setZoomValue(e.target.value)}
-        >
-          {zoomOptions.map((option) => (
+        <select value={zoomInput} onChange={e => setZoomValue(e.target.value)}>
+          {zoomOptions.map(option => (
             <option key={option} value={option}>
               {option}%
             </option>
@@ -146,33 +173,33 @@ function App() {
       <div>
         <div className="categories">
           <p>Categories</p>
-          <button onClick={() => toggleInput("new")}>
-            {editingTaskId === "new" ? "❌" : "✔️"}
+          <button onClick={() => toggleInput('new')}>
+            {editingTaskId === 'new' ? '❌' : '✔️'}
           </button>
         </div>
 
-        {editingTaskId === "new" && (
+        {editingTaskId === 'new' && (
           <div className="input-container">
             <input
               type="text"
               placeholder="Додати задачу..."
               value={taskInput}
-              onChange={(e) => setTaskInput(e.target.value)}
+              onChange={e => setTaskInput(e.target.value)}
             />
             <button onClick={addTask}>Додати</button>
           </div>
         )}
       </div>
       <ul className="task-list">
-        {tasks.map((task) => (
-          <li key={task.id} className="task-item">
+        {tasks.map(task => (
+          <li key={task.id} className="task-item" onMouseDown={handleMouseDown}>
             {editingTaskId === task.id ? (
               <div className="input-container">
                 <input
                   type="text"
                   value={task.text}
-                  onChange={(e) => {
-                    const updatedTasks = tasks.map((t) => {
+                  onChange={e => {
+                    const updatedTasks = tasks.map(t => {
                       if (t.id === task.id) {
                         return { ...t, text: e.target.value };
                       }
@@ -193,14 +220,14 @@ function App() {
                 </div>
                 {task.subtasks.length > 0 && (
                   <ul className="subtask-list">
-                    {task.subtasks.map((subtask) => (
+                    {task.subtasks.map(subtask => (
                       <li key={subtask.id} className="subtask-item">
                         {editingSubtask === subtask.id ? (
                           <div className="input-container">
                             <input
                               type="text"
                               value={subtask.text}
-                              onChange={(e) => {
+                              onChange={e => {
                                 editSubtask(
                                   task.id,
                                   subtask.id,
@@ -245,7 +272,7 @@ function App() {
                       type="text"
                       placeholder="Додати підзавдання..."
                       value={newSubtaskInput}
-                      onChange={(e) => setNewSubtaskInput(e.target.value)}
+                      onChange={e => setNewSubtaskInput(e.target.value)}
                     />
                     <button
                       onClick={() => {
